@@ -9,13 +9,10 @@ app = FastAPI(title="IoT Server API", version="1.0")
 
 # Database connection
 def get_db():
-    return psycopg2.connect(
-        host=os.getenv("DB_HOST"),
-        port=os.getenv("DB_PORT"),
-        database=os.getenv("DB_NAME"),
-        user=os.getenv("DB_USER"),
-        password=os.getenv("DB_PASSWORD")
-    )
+    database_url = os.getenv("DATABASE_URL")
+    if not database_url:
+        raise HTTPException(status_code=500, detail="DATABASE_URL tidak ditemukan")
+    return psycopg2.connect(database_url)
 
 # Model Data
 class SensorData(BaseModel):
