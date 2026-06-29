@@ -1,0 +1,6 @@
+# File .gitignore — file ini tidak akan di-upload ke GitHub
+.env
+venv/
+__pycache__/
+*.pyc
+.DS_Store
