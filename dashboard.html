@@ -1,0 +1,435 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>IoT Dashboard</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family: "Segoe UI", Arial, sans-serif;
+        background: #0f172a;
+        color: #e2e8f0;
+        padding: 20px;
+        min-height: 100vh;
+      }
+      .container {
+        max-width: 1100px;
+        margin: 0 auto;
+      }
+
+      header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+        flex-wrap: wrap;
+        gap: 12px;
+      }
+      h1 {
+        font-size: 22px;
+        color: #f1f5f9;
+      }
+      h1 span {
+        color: #818cf8;
+      }
+
+      .status-badge {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: #1e293b;
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-size: 13px;
+      }
+      .dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: #ef4444;
+        transition: background 0.3s;
+      }
+      .dot.online {
+        background: #22c55e;
+        box-shadow: 0 0 8px #22c55e;
+      }
+
+      .cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 16px;
+        margin-bottom: 24px;
+      }
+      .card {
+        background: #1e293b;
+        border-radius: 14px;
+        padding: 18px;
+        border: 1px solid #334155;
+      }
+      .card .label {
+        font-size: 12px;
+        color: #94a3b8;
+        margin-bottom: 6px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+      .card .value {
+        font-size: 28px;
+        font-weight: 700;
+      }
+      .card.s1 .value {
+        color: #60a5fa;
+      }
+      .card.s2 .value {
+        color: #34d399;
+      }
+      .card.s3 .value {
+        color: #fbbf24;
+      }
+      .card .unit {
+        font-size: 13px;
+        color: #64748b;
+        margin-left: 4px;
+      }
+
+      .panel {
+        background: #1e293b;
+        border-radius: 14px;
+        padding: 20px;
+        margin-bottom: 20px;
+        border: 1px solid #334155;
+      }
+      .panel h2 {
+        font-size: 15px;
+        margin-bottom: 14px;
+        color: #f1f5f9;
+      }
+
+      .chart-wrap {
+        position: relative;
+        height: 320px;
+      }
+
+      .relay-panel {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 16px;
+      }
+      .relay-info {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .relay-status {
+        font-size: 14px;
+        padding: 6px 14px;
+        border-radius: 8px;
+        font-weight: 600;
+      }
+      .relay-status.on {
+        background: #064e3b;
+        color: #34d399;
+      }
+      .relay-status.off {
+        background: #450a0a;
+        color: #f87171;
+      }
+
+      .btn-group {
+        display: flex;
+        gap: 10px;
+      }
+      button {
+        padding: 10px 24px;
+        border: none;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition:
+          opacity 0.2s,
+          transform 0.1s;
+      }
+      button:active {
+        transform: scale(0.97);
+      }
+      button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+      .btn-on {
+        background: #16a34a;
+        color: white;
+      }
+      .btn-on:hover:not(:disabled) {
+        background: #15803d;
+      }
+      .btn-off {
+        background: #dc2626;
+        color: white;
+      }
+      .btn-off:hover:not(:disabled) {
+        background: #b91c1c;
+      }
+
+      .last-update {
+        font-size: 11px;
+        color: #64748b;
+        margin-top: 10px;
+        text-align: right;
+      }
+      .error-msg {
+        background: #450a0a;
+        color: #fca5a5;
+        padding: 10px 14px;
+        border-radius: 8px;
+        font-size: 13px;
+        margin-bottom: 16px;
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <h1>📡 IoT <span>Dashboard</span></h1>
+        <div class="status-badge">
+          <div class="dot" id="connectionDot"></div>
+          <span id="connectionText">Menghubungkan...</span>
+        </div>
+      </header>
+
+      <div class="error-msg" id="errorMsg"></div>
+
+      <div class="cards">
+        <div class="card s1">
+          <div class="label">Sensor 1</div>
+          <div class="value">
+            <span id="val1">--</span><span class="unit"></span>
+          </div>
+        </div>
+        <div class="card s2">
+          <div class="label">Sensor 2</div>
+          <div class="value">
+            <span id="val2">--</span><span class="unit"></span>
+          </div>
+        </div>
+        <div class="card s3">
+          <div class="label">Sensor 3</div>
+          <div class="value">
+            <span id="val3">--</span><span class="unit"></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>📈 Grafik Data Sensor (50 data terakhir)</h2>
+        <div class="chart-wrap">
+          <canvas id="sensorChart"></canvas>
+        </div>
+        <div class="last-update" id="lastUpdate">Belum ada data</div>
+      </div>
+
+      <div class="panel">
+        <h2>🔌 Kontrol Relay</h2>
+        <div class="relay-panel">
+          <div class="relay-info">
+            <span>Status saat ini:</span>
+            <span class="relay-status off" id="relayStatusBadge">OFF</span>
+          </div>
+          <div class="btn-group">
+            <button class="btn-on" id="btnOn" onclick="setRelay(true)">
+              Nyalakan (ON)
+            </button>
+            <button class="btn-off" id="btnOff" onclick="setRelay(false)">
+              Matikan (OFF)
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // ════════════════════════════════════════════════════════
+      // KONFIGURASI — GANTI SESUAI SERVER ANDA
+      // ════════════════════════════════════════════════════════
+      const SERVER_HOST = "iot-kilab.onrender.com"; // <-- GANTI dengan URL Render Anda (tanpa https://, tanpa / di akhir)
+      const API_BASE = "https://" + SERVER_HOST;
+      const RELAY_NAME = "relay1";
+      const REFRESH_INTERVAL = 5000; // refresh setiap 5 detik
+
+      // ════════════════════════════════════════════════════════
+      // SETUP CHART.JS
+      // ════════════════════════════════════════════════════════
+      const ctx = document.getElementById("sensorChart").getContext("2d");
+      const sensorChart = new Chart(ctx, {
+        type: "line",
+        data: {
+          labels: [],
+          datasets: [
+            {
+              label: "Sensor 1",
+              data: [],
+              borderColor: "#60A5FA",
+              backgroundColor: "rgba(96,165,250,0.1)",
+              tension: 0.3,
+              pointRadius: 2,
+            },
+            {
+              label: "Sensor 2",
+              data: [],
+              borderColor: "#34D399",
+              backgroundColor: "rgba(52,211,153,0.1)",
+              tension: 0.3,
+              pointRadius: 2,
+            },
+            {
+              label: "Sensor 3",
+              data: [],
+              borderColor: "#FBBF24",
+              backgroundColor: "rgba(251,191,36,0.1)",
+              tension: 0.3,
+              pointRadius: 2,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: "index", intersect: false },
+          plugins: {
+            legend: { labels: { color: "#E2E8F0" } },
+          },
+          scales: {
+            x: {
+              ticks: { color: "#94A3B8", maxTicksLimit: 8 },
+              grid: { color: "#334155" },
+            },
+            y: { ticks: { color: "#94A3B8" }, grid: { color: "#334155" } },
+          },
+        },
+      });
+
+      // ════════════════════════════════════════════════════════
+      // FUNGSI: Ambil data sensor & update grafik
+      // ════════════════════════════════════════════════════════
+      async function fetchSensorData() {
+        try {
+          const res = await fetch(`${API_BASE}/sensor/chart?limit=50`);
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const data = await res.json();
+
+          if (data.length > 0) {
+            sensorChart.data.labels = data.map((d) => d.timestamp);
+            sensorChart.data.datasets[0].data = data.map((d) => d.sensor1);
+            sensorChart.data.datasets[1].data = data.map((d) => d.sensor2);
+            sensorChart.data.datasets[2].data = data.map((d) => d.sensor3);
+            sensorChart.update();
+
+            const last = data[data.length - 1];
+            document.getElementById("val1").textContent =
+              last.sensor1.toFixed(1);
+            document.getElementById("val2").textContent =
+              last.sensor2.toFixed(1);
+            document.getElementById("val3").textContent =
+              last.sensor3.toFixed(1);
+            document.getElementById("lastUpdate").textContent =
+              "Update terakhir: " + new Date().toLocaleTimeString("id-ID");
+          }
+
+          setConnectionStatus(true);
+          hideError();
+        } catch (err) {
+          console.error("Gagal ambil data sensor:", err);
+          setConnectionStatus(false);
+          showError(
+            "Gagal mengambil data sensor. Cek koneksi atau URL server.",
+          );
+        }
+      }
+
+      // ════════════════════════════════════════════════════════
+      // FUNGSI: Ambil status relay
+      // ════════════════════════════════════════════════════════
+      async function fetchRelayStatus() {
+        try {
+          const res = await fetch(`${API_BASE}/relay/${RELAY_NAME}`);
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const data = await res.json();
+          updateRelayDisplay(data.status);
+        } catch (err) {
+          console.error("Gagal ambil status relay:", err);
+        }
+      }
+
+      // ════════════════════════════════════════════════════════
+      // FUNGSI: Set status relay (ON/OFF)
+      // ════════════════════════════════════════════════════════
+      async function setRelay(status) {
+        const btnOn = document.getElementById("btnOn");
+        const btnOff = document.getElementById("btnOff");
+        btnOn.disabled = true;
+        btnOff.disabled = true;
+
+        try {
+          const url = `${API_BASE}/relay/${RELAY_NAME}?status=${status}&updated_by=dashboard`;
+          const res = await fetch(url, { method: "PUT" });
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const data = await res.json();
+          updateRelayDisplay(data.new_status);
+          hideError();
+        } catch (err) {
+          console.error("Gagal ubah relay:", err);
+          showError("Gagal mengubah status relay. Coba lagi.");
+        } finally {
+          btnOn.disabled = false;
+          btnOff.disabled = false;
+        }
+      }
+
+      // ════════════════════════════════════════════════════════
+      // FUNGSI: Update tampilan UI
+      // ════════════════════════════════════════════════════════
+      function updateRelayDisplay(isOn) {
+        const badge = document.getElementById("relayStatusBadge");
+        badge.textContent = isOn ? "ON" : "OFF";
+        badge.className = "relay-status " + (isOn ? "on" : "off");
+      }
+
+      function setConnectionStatus(online) {
+        const dot = document.getElementById("connectionDot");
+        const text = document.getElementById("connectionText");
+        dot.className = "dot" + (online ? " online" : "");
+        text.textContent = online ? "Online" : "Offline";
+      }
+
+      function showError(msg) {
+        const el = document.getElementById("errorMsg");
+        el.textContent = "⚠️ " + msg;
+        el.style.display = "block";
+      }
+      function hideError() {
+        document.getElementById("errorMsg").style.display = "none";
+      }
+
+      // ════════════════════════════════════════════════════════
+      // JALANKAN PERTAMA KALI & AUTO REFRESH
+      // ════════════════════════════════════════════════════════
+      fetchSensorData();
+      fetchRelayStatus();
+
+      setInterval(() => {
+        fetchSensorData();
+        fetchRelayStatus();
+      }, REFRESH_INTERVAL);
+    </script>
+  </body>
+</html>
